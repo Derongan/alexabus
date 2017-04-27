@@ -1,0 +1,3 @@
+[submodule "pygtfsdb"]
+	path = pygtfsdb
+	url = https://github.com/Derongan/pygtfsdb
