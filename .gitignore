@@ -4,3 +4,4 @@ AlexaBus/config.py
 AlexaBus/lambda/config.py
 AlexaBus/lambda/deploy.zip
 AlexaBus/lambda/awslambda-psycopg2/
+AlexaBus/provision/config.py
