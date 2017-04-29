@@ -1,5 +1,6 @@
 # Created by .ignore support plugin (hsz.mobi)
 .idea/
 AlexaBus/config.py
-/AlexaBus/lambda/config.py
-/AlexaBus/lambda/deploy.zip
+AlexaBus/lambda/config.py
+AlexaBus/lambda/deploy.zip
+AlexaBus/lambda/awslambda-psycopg2/
