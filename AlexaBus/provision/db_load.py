@@ -9,7 +9,7 @@ if __name__ == "__main__":
     db_url = "postgresql://{user}:{password}@{endpoint}:{port}/{db}".format(endpoint=DB_ENDPOINT, db=DB_NAME,
                                                                             user=DB_USER,
                                                                             password=DB_PASSWORD, port=DB_PORT)
-    gtdb = GtfsDb(db_url)
+    gtdb = GtfsDb(db_url, spatial=True)
 
     feed_ids = tapi.get_all_feed_ids()
 
