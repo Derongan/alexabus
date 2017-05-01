@@ -1,4 +1,4 @@
-from pygtfsdb.GtfsDb import GtfsDb
+from pygtfsdb.pygtfsdb.GtfsDb import GtfsDb
 from TransitFeedAPI import TransitFeedAPI
 from config import *
 import traceback
