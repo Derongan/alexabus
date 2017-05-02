@@ -1,10 +1,17 @@
-from pygtfsdb.pygtfsdb.GtfsDb import GtfsDb
+import sys
+from pygtfsdb.GtfsDb import GtfsDb
 from TransitFeedAPI import TransitFeedAPI
 from config import *
 import traceback
+import logging
+
 
 if __name__ == "__main__":
     tapi = TransitFeedAPI(TRANSIT_FEED_API_KEY)
+
+    # DB_ENDPOINT = "localhost"
+    # DB_USER = "postgres"
+    # DB_PASSWORD = ""
 
     db_url = "postgresql://{user}:{password}@{endpoint}:{port}/{db}".format(endpoint=DB_ENDPOINT, db=DB_NAME,
                                                                             user=DB_USER,
@@ -14,6 +21,7 @@ if __name__ == "__main__":
     feed_ids = tapi.get_all_feed_ids()
 
     for fid in feed_ids:
+        logging.info("Loading {0}".format(fid))
         try:
             url = tapi.get_feed_zip_url(fid)
         except:
