@@ -16,9 +16,9 @@ if __name__ == "__main__":
     db_url = "postgresql://{user}:{password}@{endpoint}:{port}/{db}".format(endpoint=DB_ENDPOINT, db=DB_NAME,
                                                                             user=DB_USER,
                                                                             password=DB_PASSWORD, port=DB_PORT)
-    gtdb = GtfsDb(db_url, spatial=True)
+    gtdb = GtfsDb(db_url, spatial=True, batch_size=3000)
 
-    feed_ids = tapi.get_all_feed_ids()
+    feed_ids = tapi.get_california_feed_ids()
 
     for fid in feed_ids:
         logging.info("Loading {0}".format(fid))

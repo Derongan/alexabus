@@ -18,13 +18,25 @@ class TransitFeedAPI(object):
 
     def get_all_feed_ids(self):
         first = self.get_feed_ids(0, 0, page=0)['results']
-        print first.keys()
         num_pages = first['numPages']
 
         res = [feed['id'] for feed in first['feeds']]
 
         for i in range(1, num_pages):
             nxt = self.get_feed_ids(0, 0, page=i)['results']['feeds']
+
+            res += [feed['id'] for feed in nxt]
+
+        return res
+
+    def get_california_feed_ids(self):
+        first = self.get_feed_ids(67, page=1, descendants=1)['results']
+        num_pages = first['numPages']
+
+        res = [feed['id'] for feed in first['feeds']]
+
+        for i in range(1, num_pages):
+            nxt = self.get_feed_ids(67, page=i, descendants=1)['results']['feeds']
 
             res += [feed['id'] for feed in nxt]
 
@@ -38,5 +50,7 @@ class TransitFeedAPI(object):
 
 if __name__ == "__main__":
     from config import TRANSIT_FEED_API_KEY
+
     x = TransitFeedAPI(TRANSIT_FEED_API_KEY)
-    print x.get_all_feed_ids()
+    print x.get_locations()
+    print x.get_california_feed_ids()
