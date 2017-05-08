@@ -48,10 +48,9 @@ def get_lat_lng(loc):
     address = "{0},+{1}+,{2}".format(loc['addressLine1'].replace(" ", "+"), loc['city'].replace(" ", "+"),
                                      loc['stateOrRegion'].replace(" ", "+"))
     return \
-        requests.get("https://maps.googleapis.com/maps/api/geocode/json?address=" + address).json()['results'][
+        requests.get("https://maps.googleapis.com/maps/api/geocode/json?address=" + address).json()['results'][0][
             'geometry'][
             'location']
-
 
 def get_buses(intent, latlon):
     db = GtfsDb(config.DB_ENDPOINT, config.DB_NAME, config.DB_USER, config.DB_PASSWORD, config.DB_PORT)
@@ -65,10 +64,12 @@ def get_buses(intent, latlon):
         closest_stop = closest_stops[0]
         closest_id = closest_stop[-1]
 
+        closest_gtfs = closest_stop[-2]
+
         speech_output = "The closest stop is {0} which is {1} meters away.".format(closest_stop[0],
                                                                                    int(round(closest_stop[1], -1)))
 
-        next_buses = db.get_bus_times_at_stop(closest_id)
+        next_buses = db.get_bus_times_at_stop(closest_id, closest_gtfs)
 
         speech_output += " There are {0} bus lines still running to this stop right now.".format(len(next_buses))
         for line in next_buses:
