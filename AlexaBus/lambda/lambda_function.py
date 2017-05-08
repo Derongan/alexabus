@@ -52,6 +52,7 @@ def get_lat_lng(loc):
             'geometry'][
             'location']
 
+
 def get_buses(intent, latlon):
     db = GtfsDb(config.DB_ENDPOINT, config.DB_NAME, config.DB_USER, config.DB_PASSWORD, config.DB_PORT)
 
@@ -72,12 +73,16 @@ def get_buses(intent, latlon):
         next_buses = db.get_bus_times_at_stop(closest_id, closest_gtfs)
 
         speech_output += " There are {0} bus lines still running to this stop right now.".format(len(next_buses))
+        if len(next_buses) == 0:
+            speech_output += " Either the buses have stopped running, or the agency servicing this stop does not" \
+                             " include exact time points. In the future this information will be found by" \
+                             " interpolation."
         for line in next_buses:
-            speech_output += " The next {0} line bus that I know about will arrive at around {1}".format(line[2], line[
+            speech_output += " The next {0} line bus that I know about will arrive at around {1}.".format(line[2], line[
                 0].strftime("%-I:%M %p"))
 
     else:
-        speech_output = "I can't find any bus stops near you, sorry"
+        speech_output = "I can't find any bus stops within 500 meters of your location, sorry."
 
     db.conn.close()
 
