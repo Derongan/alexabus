@@ -1,5 +1,10 @@
 from db_handler import GtfsDb
 import config
+import requests
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
@@ -8,21 +13,50 @@ def lambda_handler(event, context):
         raise ValueError("Invalid Application ID")
 
     if event['request']['type'] == 'IntentRequest':
-        return on_intent(event['request'], event['session'])
+        try:
+            token = event['context']['System']['user']['permissions']['consentToken']
+            device = event['context']['System']['device']['deviceId']
+        except:
+            return build_response({}, build_speechlet_response(
+                event['request']['intent']['name'], "I need permission to look at your device location, sorry", "",
+                True))
+
+        loc = get_location(token, device)
+        latlon = get_lat_lng(loc)
+
+        return on_intent(event['request'], event['session'], latlon)
 
 
-def on_intent(intent_request, ses):
+def on_intent(intent_request, ses, latlon):
     intent = intent_request['intent']
     intent_name = intent_request['intent']['name']
 
     if intent_name == "GetBuses":
-        return get_buses(intent)
+        return get_buses(intent, latlon)
 
 
-def get_buses(intent):
+def get_location(token, device):
+    url = "https://api.amazonalexa.com/v1/devices/{deviceId}/settings/address".format(deviceId=device)
+
+    resp = requests.get(url, headers={'Authorization': 'Bearer {token}'.format(token=token)}).json()
+
+    return resp
+
+
+def get_lat_lng(loc):
+    # 1600+Amphitheatre+Parkway,+Mountain+View,+CA&key=YOUR_API_KEY
+    address = "{0},+{1}+,{2}".format(loc['addressLine1'].replace(" ", "+"), loc['city'].replace(" ", "+"),
+                                     loc['stateOrRegion'].replace(" ", "+"))
+    return \
+        requests.get("https://maps.googleapis.com/maps/api/geocode/json?address=" + address).json()['results'][
+            'geometry'][
+            'location']
+
+
+def get_buses(intent, latlon):
     db = GtfsDb(config.DB_ENDPOINT, config.DB_NAME, config.DB_USER, config.DB_PASSWORD, config.DB_PORT)
 
-    latlng = (38.547188, -121.788848)
+    latlng = (latlon['lat'], latlon['lng'])
 
     # print (db.get_bus_times_at_stop(stop_id))
     closest_stops = db.get_closest_stops(latlng, 1)

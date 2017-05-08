@@ -1,29 +1,27 @@
-SELECT route_id,
-       MIN(arrival_time)
-FROM   stop_time JOIN
-(agency JOIN
-    (SELECT route_id, route.agency_id as agency_id, trip_id FROM (
-        route  JOIN
-            (
-                   SELECT route_id, trip.agency_id as agency_id, trip.id as trip_id
-                   FROM   trip
-                   JOIN   (select * FROM calendar, to_char(current_date, 'fmday') as day) calenday --fm removes trailing spaces (format)
-                   ON calenday.id = trip.service_id AND calenday.agency_id = trip.agency_id
-                   WHERE  (monday=TRUE AND day='monday') OR
-                   (tuesday=TRUE AND day='tuesday') OR
-                   (wednesday=TRUE AND day='wednesday') OR
-                   (thursday=TRUE AND day='thursday') OR
-                   (friday=TRUE AND day='friday') OR
-                   (saturday=TRUE AND day='saturday') OR
-                   (sunday=TRUE AND day='sunday')
-            ) triponday
-            ON route.id = triponday.route_id AND route.agency_id = triponday.agency_id
-        )
-    ) C2
-    ON agency.id = agency_id
-) c3
-ON c3.trip_id = stop_time.trip_id
-WHERE  stop_id = ( %s )
-AND (current_timestamp AT TIME ZONE c3.timezone)::TIME < arrival_time
-AND  arrival_time IS NOT NULL
-GROUP BY route_id
+SELECT min(arrival_time), route.pid, route.route_short_name
+FROM   stop_time,
+       trip,
+       route,
+       calendar,
+       agency,
+       (select * FROM calendar, to_char(current_date, 'fmday') as day) as calenday
+WHERE  stop_pid = %(stop_pid)s
+       AND stop_time.gtfsfeed_id = %(feed_pid)s
+       AND trip.gtfsfeed_id = %(feed_pid)s
+       AND route.gtfsfeed_id = %(feed_pid)s
+       AND stop_time.trip_pid = trip.pid
+       AND trip.route_pid = route.pid
+       AND trip.service_pid = calendar.pid
+       AND agency.gtfsfeed_id = %(feed_pid)s
+       AND route.agency_id = agency.agency_id
+       AND ((calendar.monday=TRUE AND day='monday') OR
+                   (calendar.tuesday=TRUE AND day='tuesday') OR
+                   (calendar.wednesday=TRUE AND day='wednesday') OR
+                   (calendar.thursday=TRUE AND day='thursday') OR
+                   (calendar.friday=TRUE AND day='friday') OR
+                   (calendar.saturday=TRUE AND day='saturday') OR
+                   (calendar.sunday=TRUE AND day='sunday'))
+       AND (current_timestamp AT TIME ZONE agency.agency_timezone)::TIME < arrival_time
+
+
+GROUP BY route.pid

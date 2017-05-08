@@ -9,13 +9,13 @@ class GtfsDb(object):
 
     def get_closest_stops(self, latlng, num):
         with self.conn.cursor() as cur:
-            cur.execute(GtfsDb.GET_CLOSEST_STOP, latlng[::-1] + latlng[::-1] + latlng[::-1] + (num,))
+            cur.execute(GtfsDb.GET_CLOSEST_STOP, {'lat': latlng[0], 'lon': latlng[1], 'num': num})
 
             return cur.fetchall()
 
-    def get_bus_times_at_stop(self, stop_id):
+    def get_bus_times_at_stop(self, stop_pid, feed_pid):
         with self.conn.cursor() as cur:
-            cur.execute(GtfsDb.GET_BUS_TIMES_AT_STOPS, (stop_id,))
+            cur.execute(GtfsDb.GET_BUS_TIMES_AT_STOPS, {'stop_pid': stop_pid, 'feed_pid': feed_pid})
             return cur.fetchall()
 
 
@@ -34,10 +34,11 @@ if __name__ == "__main__":
     closest_stop = db.get_closest_stops(latlng, 1)[0]
 
     closest_id = closest_stop[-1]
+    gtf_id = closest_stop[-1]
 
     print "The closest stop is {0} which is {1} meters away.".format(closest_stop[0], int(round(closest_stop[1], -1)))
 
-    next_busses = db.get_bus_times_at_stop(closest_id)
+    next_busses = db.get_bus_times_at_stop(closest_id, gtf_id)
 
     print next_busses
 
