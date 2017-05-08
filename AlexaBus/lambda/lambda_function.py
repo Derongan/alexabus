@@ -73,8 +73,8 @@ def get_buses(intent, latlon):
 
         speech_output += " There are {0} bus lines still running to this stop right now.".format(len(next_buses))
         for line in next_buses:
-            speech_output += " The next {0} line bus that I know about will arrive at around {1}".format(line[0], line[
-                1].strftime("%-I:%M %p"))
+            speech_output += " The next {0} line bus that I know about will arrive at around {1}".format(line[2], line[
+                0].strftime("%-I:%M %p"))
 
     else:
         speech_output = "I can't find any bus stops near you, sorry"
