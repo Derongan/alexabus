@@ -62,9 +62,9 @@ def get_buses(intent, latlon):
 
     if len(closest_stops) != 0:
         closest_stop = closest_stops[0]
-        closest_id = closest_stop[-1]
+        closest_id = closest_stop[-2]
 
-        closest_gtfs = closest_stop[-2]
+        closest_gtfs = closest_stop[-1]
 
         speech_output = "The closest stop is {0} which is {1} meters away.".format(closest_stop[0],
                                                                                    int(round(closest_stop[1], -1)))
