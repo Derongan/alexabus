@@ -17,14 +17,19 @@ def lambda_handler(event, context):
             token = event['context']['System']['user']['permissions']['consentToken']
             device = event['context']['System']['device']['deviceId']
         except:
-            return build_response({}, build_speechlet_response(
-                event['request']['intent']['name'], "I need permission to look at your device location, sorry", "",
-                True))
+            return on_intent(event['request'], event['session'], False)
 
         loc = get_location(token, device)
         latlon = get_lat_lng(loc)
 
         return on_intent(event['request'], event['session'], latlon)
+
+    else:
+        return build_response({}, build_speechlet_response("launch",
+                                                           "Hello! I am buster bus. I can provide you with the next bus "
+                                                           "coming to a stop near"
+                                                           " you! Simply ask me when the next bus is coming and I will"
+                                                           " do my best!", "", True))
 
 
 def on_intent(intent_request, ses, latlon):
@@ -32,7 +37,28 @@ def on_intent(intent_request, ses, latlon):
     intent_name = intent_request['intent']['name']
 
     if intent_name == "GetBuses":
+        if not latlon:
+            return build_response({}, build_speechlet_response(
+                intent_name, "I need permission to look at your device location, sorry", "",
+                True))
         return get_buses(intent, latlon)
+
+    elif intent_name == "AMAZON.HelpIntent":
+        if not latlon:
+            return build_response({}, build_speechlet_response(intent_name,
+                                                               "I can provide you with the next bus coming to a stop near"
+                                                               " you! Simply allow me to look at your location, and then"
+                                                               " ask me when the next bus is coming and I will"
+                                                               " do my best!", "", True))
+        else:
+            return build_response({}, build_speechlet_response(intent_name,
+                                                               "I can provide you with the next bus coming to a stop near"
+                                                               " you! Simply ask me when the next bus is coming and I will"
+                                                               " do my best!", "", True))
+    # elif intent_name == "AMAZON.CancelIntent" or intent_name == "AMAZON.StopIntent":
+    else:
+        return build_response({}, build_speechlet_response(intent_name,
+                                                           "Bye", "", True))
 
 
 def get_location(token, device):

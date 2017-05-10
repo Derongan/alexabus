@@ -33,9 +33,12 @@ if __name__ == "__main__":
     # print (db.get_bus_times_at_stop(stop_id))
     closest_stop = db.get_closest_stops(latlng, 1)[0]
 
-    closest_id = closest_stop[-1]
+    print closest_stop
+
+    closest_id = closest_stop[-2]
     gtf_id = closest_stop[-1]
 
+    print closest_id, gtf_id
     print "The closest stop is {0} which is {1} meters away.".format(closest_stop[0], int(round(closest_stop[1], -1)))
 
     next_busses = db.get_bus_times_at_stop(closest_id, gtf_id)
@@ -44,5 +47,6 @@ if __name__ == "__main__":
 
     print "There are {0} bus lines still running to this stop right now.".format(len(next_busses))
     for line in next_busses:
+        print line
         print "The next {0} line bus that I know about will arive at around {1}".format(line[0],
                                                                                         line[1].strftime("%-I:%M %p"))
