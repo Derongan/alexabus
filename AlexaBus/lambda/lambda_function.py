@@ -6,58 +6,49 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+HELP_NO_LOCATION = "I can provide you with the next bus coming to a stop near" \
+                   " you! Simply allow me to look at your location, and then" \
+                   " ask me when the next bus is coming and I will" \
+                   " do my best!"
+
+HELP_WITH_LOCATION = "I can provide you with the next bus coming to a stop near" \
+                     " you! Simply ask me when the next bus is coming and I will" \
+                     " do my best!"
+
+NEED_PERMISSION = "In order to tell you when the next bus is coming, I" \
+                  " need permission to look at your device location, sorry"
+
 
 def lambda_handler(event, context):
-    if (event['session']['application']['applicationId'] !=
-            "amzn1.ask.skill.36cc0cfb-b522-415c-aeb6-bb91d72ac997"):
+    if event['session']['application']['applicationId'] != "amzn1.ask.skill.36cc0cfb-b522-415c-aeb6-bb91d72ac997":
         raise ValueError("Invalid Application ID")
 
+    token, device = get_tokens(event)
+    latlon = False
+
+    if token:
+        location = get_location(token, device)
+        latlon = get_lat_lng(location)
+
     if event['request']['type'] == 'IntentRequest':
-        try:
-            token = event['context']['System']['user']['permissions']['consentToken']
-            device = event['context']['System']['device']['deviceId']
-        except:
-            return on_intent(event['request'], event['session'], False)
-
-        loc = get_location(token, device)
-        latlon = get_lat_lng(loc)
-
-        return on_intent(event['request'], event['session'], latlon)
-
+        return on_intent(event['request'], latlon)
     else:
-        return build_response({}, build_speechlet_response("launch",
-                                                           "Hello! I am buster bus. I can provide you with the next bus "
-                                                           "coming to a stop near"
-                                                           " you! Simply ask me when the next bus is coming and I will"
-                                                           " do my best!", "", True))
+        return get_buses("Get Buses", latlon)
 
 
-def on_intent(intent_request, ses, latlon):
-    intent = intent_request['intent']
+def on_intent(intent_request, latlon):
     intent_name = intent_request['intent']['name']
 
     if intent_name == "GetBuses":
-        if not latlon:
-            return build_response({}, build_speechlet_response(
-                intent_name, "I need permission to look at your device location, sorry", "",
-                True))
-        return get_buses(intent, latlon)
+        return get_buses("Get Buses", latlon)
 
     elif intent_name == "AMAZON.HelpIntent":
         if not latlon:
-            return build_response({}, build_speechlet_response(intent_name,
-                                                               "I can provide you with the next bus coming to a stop near"
-                                                               " you! Simply allow me to look at your location, and then"
-                                                               " ask me when the next bus is coming and I will"
-                                                               " do my best!", "", True))
+            return build_response({}, build_speechlet_response("Help", HELP_NO_LOCATION, "", True))
         else:
-            return build_response({}, build_speechlet_response(intent_name,
-                                                               "I can provide you with the next bus coming to a stop near"
-                                                               " you! Simply ask me when the next bus is coming and I will"
-                                                               " do my best!", "", True))
-    # elif intent_name == "AMAZON.CancelIntent" or intent_name == "AMAZON.StopIntent":
+            return build_response({}, build_speechlet_response("Help", HELP_WITH_LOCATION, "", True))
     else:
-        return build_response({}, build_speechlet_response(intent_name,
+        return build_response({}, build_speechlet_response("Stopping Buster Bus ",
                                                            "Bye", "", True))
 
 
@@ -70,50 +61,72 @@ def get_location(token, device):
 
 
 def get_lat_lng(loc):
-    # 1600+Amphitheatre+Parkway,+Mountain+View,+CA&key=YOUR_API_KEY
     address = "{0},+{1}+,{2}".format(loc['addressLine1'].replace(" ", "+"), loc['city'].replace(" ", "+"),
                                      loc['stateOrRegion'].replace(" ", "+"))
+    url = "https://maps.googleapis.com/maps/api/geocode/json?address={addr}&key={key}".format(addr=address,
+                                                                                              key=config.GOOGLE_API_KEY)
     return \
         requests.get("https://maps.googleapis.com/maps/api/geocode/json?address=" + address).json()['results'][0][
             'geometry'][
             'location']
 
 
-def get_buses(intent, latlon):
-    db = GtfsDb(config.DB_ENDPOINT, config.DB_NAME, config.DB_USER, config.DB_PASSWORD, config.DB_PORT)
+def get_tokens(event):
+    """
+    Returns the token and device or false
+    :param event:
+    :return:
+    """
+    try:
+        token = event['context']['System']['user']['permissions']['consentToken']
+        device = event['context']['System']['device']['deviceId']
+    except KeyError:
+        return False, False
 
-    latlng = (latlon['lat'], latlon['lng'])
+    return token, device
 
-    # print (db.get_bus_times_at_stop(stop_id))
-    closest_stops = db.get_closest_stops(latlng, 1)
 
-    if len(closest_stops) != 0:
-        closest_stop = closest_stops[0]
-        closest_id = closest_stop[-2]
-
-        closest_gtfs = closest_stop[-1]
-
-        speech_output = "The closest stop is {0} which is {1} meters away.".format(closest_stop[0],
-                                                                                   int(round(closest_stop[1], -1)))
-
-        next_buses = db.get_bus_times_at_stop(closest_id, closest_gtfs)
-
-        speech_output += " There are {0} bus lines still running to this stop right now.".format(len(next_buses))
-        if len(next_buses) == 0:
-            speech_output += " Either the buses have stopped running, or the agency servicing this stop does not" \
-                             " include exact time points. In the future this information will be found by" \
-                             " interpolation."
-        for line in next_buses:
-            speech_output += " The next {0} line bus that I know about will arrive at around {1}.".format(line[2], line[
-                0].strftime("%-I:%M %p"))
+def get_buses(card_name, latlon):
+    if not latlon:
+        speech_output = NEED_PERMISSION
 
     else:
-        speech_output = "I can't find any bus stops within 500 meters of your location, sorry."
+        db = GtfsDb(config.DB_ENDPOINT, config.DB_NAME, config.DB_USER, config.DB_PASSWORD, config.DB_PORT)
 
-    db.conn.close()
+        latlng = (latlon['lat'], latlon['lng'])
+
+        # print (db.get_bus_times_at_stop(stop_id))
+        closest_stops = db.get_closest_stops(latlng, 1)
+
+        if len(closest_stops) != 0:
+            closest_stop = closest_stops[0]
+            closest_id = closest_stop[-2]
+
+            closest_gtfs = closest_stop[-1]
+
+            speech_output = "The closest stop is {0} which is {1} meters away.".format(closest_stop[0],
+                                                                                       int(round(closest_stop[1], -1)))
+
+            next_buses = db.get_bus_times_at_stop(closest_id, closest_gtfs)
+
+            word = "is" if len(next_buses) == 1 else "are"
+
+            speech_output += " There {0} {1} bus lines still running to this stop right now.".format(word,
+                                                                                                     len(next_buses))
+            if len(next_buses) == 0:
+                speech_output += " There is a chance I am missing data on this bus service."
+            for line in next_buses:
+                speech_output += " The next {0} line bus that I know about will arrive at around {1}.".format(line[2],
+                                                                                                              line[
+                                                                                                                  0].strftime(
+                                                                                                                  "%-I:%M %p"))
+        else:
+            speech_output = "I can't find any bus stops within 500 meters of your location, sorry."
+
+        db.conn.close()
 
     return build_response({}, build_speechlet_response(
-        intent['name'], speech_output, "", True))
+        card_name, speech_output, "", True))
 
 
 # --------------- Helpers that build all of the responses ----------------------
@@ -127,8 +140,8 @@ def build_speechlet_response(title, output, reprompt_text, should_end_session):
         },
         'card': {
             'type': 'Simple',
-            'title': 'SessionSpeechlet - ' + title,
-            'content': 'SessionSpeechlet - ' + output
+            'title': title,
+            'content': output
         },
         'reprompt': {
             'outputSpeech': {
