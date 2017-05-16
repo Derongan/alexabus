@@ -18,6 +18,8 @@ HELP_WITH_LOCATION = "I can provide you with the next bus coming to a stop near"
 NEED_PERMISSION = "In order to tell you when the next bus is coming, I" \
                   " need permission to look at your device location, sorry"
 
+INVALID_LOCATION = "The location you have set is invalid. Perhaps you didn't supply a full address"
+
 
 def lambda_handler(event, context):
     if event['session']['application']['applicationId'] != "amzn1.ask.skill.36cc0cfb-b522-415c-aeb6-bb91d72ac997":
@@ -61,14 +63,36 @@ def get_location(token, device):
 
 
 def get_lat_lng(loc):
-    address = "{0},+{1}+,{2}".format(loc['addressLine1'].replace(" ", "+"), loc['city'].replace(" ", "+"),
-                                     loc['stateOrRegion'].replace(" ", "+"))
+    loc_lst = []
+
+    if 'addressLine1' in loc and loc['addressLine1'] is not None:
+        loc_lst.append(loc['addressLine1'].replace(" ", "+"))
+    if 'addressLine2' in loc and loc['addressLine2'] is not None:
+        loc_lst.append(loc['addressLine2'].replace(" ", "+"))
+    if 'addressLine3' in loc and loc['addressLine3'] is not None:
+        loc_lst.append(loc['addressLine3'].replace(" ", "+"))
+    if 'city' in loc and loc['city'] is not None:
+        loc_lst.append(loc['city'].replace(" ", "+"))
+    if 'stateOrRegion' in loc and loc['stateOrRegion'] is not None:
+        loc_lst.append(loc['stateOrRegion'].replace(" ", "+"))
+
+    # Returning None here is really hacky, and should be fixed
+    if len(loc_lst) < 2:
+        return None
+
+    address = "+,".join(loc_lst)
     url = "https://maps.googleapis.com/maps/api/geocode/json?address={addr}&key={key}".format(addr=address,
                                                                                               key=config.GOOGLE_API_KEY)
-    return \
-        requests.get("https://maps.googleapis.com/maps/api/geocode/json?address=" + address).json()['results'][0][
+
+    resp = requests.get(url)
+
+    try:
+        return resp.json()['results'][0][
             'geometry'][
             'location']
+
+    except (KeyError, ValueError):
+        return None
 
 
 def get_tokens(event):
@@ -87,7 +111,9 @@ def get_tokens(event):
 
 
 def get_buses(card_name, latlon):
-    if not latlon:
+    if latlon is None:
+        speech_output = INVALID_LOCATION
+    elif not latlon:
         speech_output = NEED_PERMISSION
 
     else:
